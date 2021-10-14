@@ -1,0 +1,963 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="9cf973b6-9556-453d-8f0b-1bdffbf2859c" >
+		<db:my-sql-connection host="34.93.93.224" port="3306" user="mfscreener" password="u&amp;93IRBC@" database="mutualfundscreener" />
+	</db:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="17d84637-64e2-436e-a7c1-175e8c083b98" >
+		<http:listener-connection host="0.0.0.0" port="${https.port}" protocol="HTTPS">
+			<tls:context >
+				<tls:key-store type="jks" path="cert/keystore.jks" alias="mule" keyPassword="mule123" password="mule123" />
+			</tls:context>
+		</http:listener-connection>
+		<http:listener-interceptors>
+			<http:cors-interceptor>
+				<http:origins>
+					<http:public-resource />
+				</http:origins>
+			</http:cors-interceptor>
+		</http:listener-interceptors>
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="8a0615ef-0b78-4d95-b03e-18a656519ceb" file="${env}.properties" />
+	<global-property doc:name="Global Property" doc:id="45a6769c-ae48-4822-a841-935b90e94f7b" name="env" value="dev" />
+	<flow name="lowRiskEQ" doc:id="f27b6630-7bb8-4172-b7fa-d2190bbfac9f">
+		<http:listener doc:name="Listener" doc:id="4549d17e-a5a6-4d54-9a12-47f9a78c6e9c" config-ref="HTTP_Listener_config" path="/lowrisk/EQ"/>
+		<db:select doc:name="Select" doc:id="49257263-84c1-46ba-84c1-76d0ca9600a5" config-ref="Database_Config">
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"EQ")>0)AND
+(
+(CAST(Beta as float) <= 0.5 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)<=1 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)>=5 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return3yrs as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="aa1a8b47-921a-479a-9693-1455a269b61d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="mediumRiskEQ" doc:id="28576313-58f9-4414-8577-fa2eb67d510d">
+		<http:listener doc:name="Listener" doc:id="d95a4069-784b-4d27-8bab-1576f46210d9" config-ref="HTTP_Listener_config" path="/medrisk/EQ" />
+		<db:select doc:name="Select" doc:id="236323cd-0989-4056-8ae8-230127371d7e" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"EQ")>0) AND
+(
+(CAST(Beta as float) > 0.5 AND CAST(Beta as float) <= 1 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)>1 AND CAST(StandardDeviation as float) <= 10 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)<5 AND CAST(Sharpe as float)>1 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return3yrs as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Message" doc:id="e05c2c58-4f53-4c0e-b52c-0f998ac6b5f6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="highRiskEQ" doc:id="91e99a3f-0c40-429b-8999-2800087780eb">
+		<http:listener doc:name="Listener" doc:id="7aa49660-c5bd-4c81-8553-290c07dfeccf" config-ref="HTTP_Listener_config" path="/highrisk/EQ" />
+		<db:select doc:name="Select" doc:id="76561e9e-5970-4bbb-ac75-2bc4c6fd8ac1" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"EQ")>0)AND
+(
+(CAST(Beta as float) >1 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)>10 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)<1 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return3yrs as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="dc701285-f4d8-4298-a44e-9c3f30a64ccd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="GetByCategory" doc:id="b054385c-e839-4e53-bdde-e41b9f6c0f81">
+		<http:listener doc:name="Listener" doc:id="7e6176de-a474-4055-8dd1-8b4731532f26" config-ref="HTTP_Listener_config" path="/mfs/{category}"/>
+		<db:select doc:name="Select" doc:id="4b9e6afe-1a19-43d5-bad9-7e0f27c9d4dd" config-ref="Database_Config">
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+WHERE FIND_IN_SET(left(Category,2),:category)>0 Order by CAST(Return6mo as float) DESC;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'category':attributes.uriParams.category}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="a33645cd-f953-4f2a-82a9-33e458ef537a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return5yrs: payload01.Return5yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="GetBest5" doc:id="8b4c487f-5791-494d-ba8b-fe3ac950cdde">
+		<http:listener doc:name="Listener" doc:id="5bc3637d-59fb-44d5-abf6-326305791470" config-ref="HTTP_Listener_config" path="/fundcase/best5"/>
+		<db:select doc:name="Select" doc:id="fdd9b480-264b-457e-97e1-c87eb9bd3bcc" config-ref="Database_Config">
+			<db:sql><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+ORDER BY CAST(Return6mo as float) DESC
+LIMIT 5;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="7700f41c-4b56-4500-ba03-88d19802073c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return5yrs: payload01.Return5yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="returnType" doc:id="0ab08d31-2242-4678-86ba-a8e2388fde24">
+		<http:listener doc:name="Listener" doc:id="06209277-be10-41c0-ad7e-f4b33575cb5f" config-ref="HTTP_Listener_config" path="/return/{Return}"/>
+		<db:select doc:name="Select" doc:id="fb5b87e2-93dc-4331-8995-bfea31f77a5c" config-ref="Database_Config">
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+WHERE CAST(Return6mo as float)>=:Return ORDER BY CAST(Return6mo as float) DESC ;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'Return':attributes.uriParams.Return}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="098a9aef-a6e7-4241-aa75-f51a74eeda1a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return5yrs: payload01.Return5yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: (payload01.YieldToMaturity default "") ++ (payload01.YieldToMaturity default ""),
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="GetBySubCat" doc:id="d3980881-b2df-452f-a10d-e6570e958717">
+		<http:listener doc:name="Listener" doc:id="ead0aa61-7f49-4601-b416-72698390270a" config-ref="HTTP_Listener_config" path="/getbysubcat/{category}"/>
+		<db:select doc:name="Select" doc:id="f52d3896-7eb2-4858-8a07-445a27de459d" config-ref="Database_Config">
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks  from  mf_data where Category=:category ORDER BY CAST(Return6mo as float) desc;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'category':attributes.uriParams.category}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="8f14bb27-17bf-441e-93f2-da3c47638695" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating as Number default 0,
+	AUM: payload01.AUM default "",
+	InceptionDate: (payload01.InceptionDate default ""),
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	NoofStocks: payload01.NoofStocks default "",
+	HighestSector: payload01.HighestSector default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="FundDetailsByName" doc:id="ddcfa673-123f-433c-a57a-7945bcbb444b">
+		<http:listener doc:name="Listener" doc:id="3432b8ea-5bcf-4501-af17-fb32dac6c123" config-ref="HTTP_Listener_config" path="/fundalldetails/{Funds}"/>
+		<db:select doc:name="Select" doc:id="cc10a880-1184-4ac0-abe8-6fca1ba53a4c" config-ref="Database_Config">
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data where Funds=:Funds;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'Funds':attributes.uriParams.Funds}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="f8d2e2cd-008a-4cf9-9e6e-701945c6a5eb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="lowriskHY" doc:id="3f95835f-772a-4ae7-97cf-9a1429036103" >
+		<http:listener doc:name="Listener" doc:id="83106212-e27e-4308-9da7-1ce8ed1d7343" config-ref="HTTP_Listener_config" path="/lowrisk/HY" />
+		<db:select doc:name="Select" doc:id="c08dd892-4a59-4246-99a0-73aac71db934" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"HY")>0)AND
+(
+(CAST(Beta as float) <= 0.5 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)<=1 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)>=5 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return1yr as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="6a0ff0cd-dc1e-4cd5-acac-0a40b1575ca8">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="lowRiskDT" doc:id="806ae5be-690a-455c-aba3-d04a8b886b5a" >
+		<http:listener doc:name="Listener" doc:id="b8373193-47ee-49ee-af83-faccdc29d6f6" config-ref="HTTP_Listener_config" path="/lowrisk/DT" />
+		<db:select doc:name="Select" doc:id="4655b0b6-1df8-4728-9518-4a515ad1e432" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"DT")>0)AND
+(
+(CAST(Beta as float) <= 0.5 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)<=1 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)>=5 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return6mo as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="cd0cac2c-5fe9-4884-b2ea-ba4fe5e91365" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="mediumRiskHY" doc:id="b008c638-8b35-433a-945c-ec8057053cf2" >
+		<http:listener doc:name="Listener" doc:id="ce4a5673-e886-44f3-b55f-191f5f0a084d" config-ref="HTTP_Listener_config" path="/medrisk/HY" />
+		<db:select doc:name="Select" doc:id="6ac5137b-4245-4009-b344-338b049a742d" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"HY")>0) AND
+(
+(CAST(Beta as float) > 0.5 AND CAST(Beta as float) <= 1 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)>1 AND CAST(StandardDeviation as float) <= 10 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)<5 AND CAST(Sharpe as float)>1 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return1yr as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Message" doc:id="0ac57657-ff99-4926-ae0c-935019d88f3d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="mediumRiskDT" doc:id="a2e30d00-8f50-4c2e-b281-88c7e9f27470" >
+		<http:listener doc:name="Listener" doc:id="ceb20bd4-3942-4784-9eda-49aa3f6bd903" config-ref="HTTP_Listener_config" path="/medrisk/DT" />
+		<db:select doc:name="Select" doc:id="b3ab93de-65c2-4ef7-b20e-8af5d78cc6d1" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"DT")>0) AND
+(
+(CAST(Beta as float) > 0.5 AND CAST(Beta as float) <= 1 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)>1 AND CAST(StandardDeviation as float) <= 10 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)<5 AND CAST(Sharpe as float)>1 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return6mo as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Message" doc:id="a5e77c81-c266-4b5d-94bc-176ee86a19c7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="highRiskHY" doc:id="2c9626a9-421d-4183-8da8-51e67c9b5fc2" >
+		<http:listener doc:name="Listener" doc:id="0b050d27-2326-48a9-aa91-c504530cf4e9" config-ref="HTTP_Listener_config" path="/highrisk/HY" />
+		<db:select doc:name="Select" doc:id="3b66f24d-6bc4-466e-91c1-a6538745c811" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"HY")>0)AND
+(
+(CAST(Beta as float) >1 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)>10 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)<1 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return1yr as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="49f559e2-2ec4-4a43-b399-c7be08a49822" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="highRiskDT" doc:id="db25d4fb-8130-44b6-bafc-8bfeafe35dd6" >
+		<http:listener doc:name="Listener" doc:id="5f1ecf66-e454-41c1-9542-75d2b4c940d5" config-ref="HTTP_Listener_config" path="/highrisk/DT" />
+		<db:select doc:name="Select" doc:id="089603e0-3f4e-4a84-8a45-0cbc91f7b5e9" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where (FIND_IN_SET(left(Category,2),"DT")>0)AND
+(
+(CAST(Beta as float) >1 AND NOT Beta = "-") OR
+(CAST(StandardDeviation as float)>10 AND NOT StandardDeviation = "-") OR
+(CAST(Sharpe as float)<1 AND NOT Sharpe = "-")
+) ORDER BY CAST(Return6mo as float) DESC
+LIMIT 50;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="d5d3d06f-1a42-4dfa-9644-defc99c56083" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="GetBest250" doc:id="f6b6ddad-3d3d-4140-9264-ac056c15a84e" >
+		<http:listener doc:name="Listener" doc:id="4ef68a25-9042-499b-a3d5-ed7f5cf9ce8d" config-ref="HTTP_Listener_config" path="/fundcase/best250" />
+		<db:select doc:name="Select" doc:id="d09c9489-f1a2-401e-b2bc-575c8ff670cb" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data
+where classification IN ('Equity : Large & Mid Cap','Equity : Mid Cap','Equity : Large Cap')
+ORDER BY CAST(Return1yr as float) DESC
+LIMIT 5;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="da3e3d06-d7c4-4496-8282-108a5b19239e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return5yrs: payload01.Return5yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="Accordingtosector" doc:id="f052e499-31eb-40d1-8634-888915d1054e" >
+		<http:listener doc:name="Listener" doc:id="dfb10285-9f88-4b7c-9895-bbf252d7644e" config-ref="HTTP_Listener_config" path="/fundcase/sector" />
+		<db:select doc:name="Select" doc:id="fbe26c4d-3689-48c7-b98b-d052cb1f7fe4" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select  DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from mf_data h where   Return6mo=(select max(Return6mo) from mf_data h2 where  classification IN('Equity : Sectoral - Technology')) OR Return6mo=(select max(Return6mo) from mf_data h2 where  classification IN('Equity : Sectoral - Infrastructure')) OR Return6mo=(select max(Return6mo) from mf_data h2 where  classification IN('Equity : Sectoral - Financial Services')) OR Return6mo=(select max(Return6mo) from mf_data h2 where  classification IN('Equity : Sectoral - Energy / Power')) OR Return6mo=(select max(Return6mo) from mf_data h2 where  classification IN('Equity : Sectoral - AUTO')) OR Return6mo=(select Return6mo from mf_data h2 where  classification IN('Equity : Sectoral - Pharma') ORDER BY CAST(Return6mo as float) DESC LIMIT 1) ORDER BY CAST(Return6mo as float) DESC;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="1161ea79-dfda-40ea-84d0-e5b53d51eae5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	FundManager: payload01.FundManager default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return3mo: payload01.Return3mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return2yrs: payload01.Return2yrs default "",
+	Return3yrs: payload01.Return3yrs default "",
+	Return5yrs: payload01.Return5yrs default "",
+	Return10yrs: payload01.Return10yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default "",
+	ExitloadRemarks: payload01.ExitloadRemarks default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="GetAllData" doc:id="6df25944-af6c-46d3-9c05-9c2a61863f31" >
+		<http:listener doc:name="Listener" doc:id="b4de63eb-95c2-451b-b57e-820e8e2edcec" config-ref="HTTP_Listener_config" path="/funds/alldetails" />
+		<db:select doc:name="Select" doc:id="2beb6235-6b1a-4994-a84a-5cb1ce086e90" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds ,FundManager ,Category ,RupeeVestRating ,AUM ,ExpenseRatio ,FundType ,InceptionDate ,BenchmarkIndex ,NAV  ,52WeekHigh , 52WeekLow ,Return1mo ,Return3mo ,Return6mo ,Return1yr ,Return2yrs ,Return3yrs ,Return5yrs ,Return10yrs ,TurnoverRatio , NoofStocks ,AvgMarketCap ,LargeCap ,MidCap ,SmallCap ,HighestSector ,AvgMaturity ,ModDuration ,YieldToMaturity ,Alpha ,Sharpe ,Sortino ,Beta ,StandardDeviation ,classification ,ExitloadRemarks from  mf_data;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="967f3949-fb01-4206-b5f1-8250f3e6f110" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default "",
+	Category: payload01.Category default "",
+	RupeeVestRating: payload01.RupeeVestRating default "",
+	AUM: payload01.AUM default "",
+	ExpenseRatio: payload01.ExpenseRatio default "",
+	FundType: payload01.FundType default "",
+	InceptionDate: payload01.InceptionDate default "",
+	BenchmarkIndex: payload01.BenchmarkIndex default "",
+	NAV: payload01.NAV default "",
+	"52WeekHigh": payload01."52WeekHigh" default "",
+	"52WeekLow": payload01."52WeekLow" default "",
+	Return1mo: payload01.Return1mo default "",
+	Return6mo: payload01.Return6mo default "",
+	Return1yr: payload01.Return1yr default "",
+	Return5yrs: payload01.Return5yrs default "",
+	TurnoverRatio: payload01.TurnoverRatio default "",
+	NoofStocks: payload01.NoofStocks default "",
+	AvgMarketCap: payload01.AvgMarketCap default "",
+	LargeCap: payload01.LargeCap default "",
+	MidCap: payload01.MidCap default "",
+	SmallCap: payload01.SmallCap default "",
+	HighestSector: payload01.HighestSector default "",
+	AvgMaturity: payload01.AvgMaturity default "",
+	ModDuration: payload01.ModDuration default "",
+	YieldToMaturity: payload01.YieldToMaturity default "",
+	Alpha: payload01.Alpha default "",
+	Sharpe: payload01.Sharpe default "",
+	Sortino: payload01.Sortino default "",
+	Beta: payload01.Beta default "",
+	StandardDeviation: payload01.StandardDeviation default "",
+	classification: payload01.classification default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="ReturnName" doc:id="cea5c2e4-63e5-4da8-b3c8-8f3ef4376e29" >
+		<http:listener doc:name="Listener" doc:id="8be4bfca-b1d3-440e-9c9e-49ca5cae8562" config-ref="HTTP_Listener_config" path="/funds/name" />
+		<db:select doc:name="Select" doc:id="848927ae-10b1-46a1-b10b-b95c2cd904fb" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select DISTINCT Funds from  mf_data;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="cd7bf1e7-19b7-4555-836c-55a021f71e2c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Funds: payload01.Funds default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
